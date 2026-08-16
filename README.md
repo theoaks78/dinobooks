@@ -37,7 +37,7 @@ website the next time the page is refreshed — no redeploy needed.
    - Branch = **main**, Folder = **/ (root)** → **Save**.
 6. Wait a minute or two, then refresh Settings → Pages. Your site is live at:
 
-   `https://<your-username>.github.io/dinobooks/`
+   `https://theoaks78.github.io/dinobooks/`
 
 Send that link to Libby. Bookmark it on her phone's home screen and it behaves
 almost like an app.
