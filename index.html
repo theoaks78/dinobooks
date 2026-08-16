@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DinoBooks — Our Library</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img class="logo" alt="DinoBooks logo — a dinosaur reading" src="assets/logo.png">
+    <h1><span class="dino">Dino</span>Books</h1>
+  </div>
+  <p class="tagline">Our library — every book, safely on its shelf in the cloud.</p>
+  <nav class="sitenav">
+    <a href="index.html" class="active">Library</a>
+    <a href="timeline.html">Reading Timeline</a>
+  </nav>
+  <div class="spineshelf" aria-label="Library statistics">
+    <div class="spine s1"><b id="stat-books">…</b><span>books</span></div>
+    <div class="spine s2"><b id="stat-authors">…</b><span>authors</span></div>
+    <div class="spine s3"><b id="stat-series">…</b><span>series</span></div>
+    <div class="spine s4"><b id="stat-shelves">…</b><span>shelves</span></div>
+  </div>
+  <div class="shelfrail"></div>
+  <div class="shelflip"></div>
+</header>
+
+<div class="controls">
+  <div class="controls-inner">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search a title, author or series…" aria-label="Search books">
+    </div>
+    <div class="tabs" id="tabs" role="tablist">
+      <button class="tab active" data-shelf="ALL">All</button>
+      <button class="tab" data-shelf="READ">Read ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="count" id="count"></div>
+<main class="grid" id="grid"></main>
+<div class="empty" id="empty" style="display:none">No books match that — try a different word, or another shelf.</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="close" id="close" aria-label="Close">✕</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<footer>Made with <span class="heart">♥</span> (and one helpful dinosaur) for Libby — the DinoBooks library, live from our own database.</footer>
+
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+const grid = document.getElementById('grid'), q = document.getElementById('q'),
+      countEl = document.getElementById('count'), emptyEl = document.getElementById('empty'),
+      tabsEl = document.getElementById('tabs');
+let BOOKS = [], shelf = 'ALL';
+
+function buildShelfTabs() {
+  const names = [...new Set(BOOKS.flatMap(b => b.shelves))].sort();
+  const readTab = tabsEl.querySelector('[data-shelf="READ"]');
+  names.forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'tab'; btn.dataset.shelf = n; btn.textContent = n;
+    tabsEl.insertBefore(btn, readTab);
+  });
+  tabsEl.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    tabsEl.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); shelf = t.dataset.shelf; render();
+  }));
+}
+
+function updateStats() {
+  document.getElementById('stat-books').textContent = BOOKS.length;
+  document.getElementById('stat-authors').textContent = new Set(BOOKS.flatMap(b => b.authors)).size;
+  document.getElementById('stat-series').textContent = new Set(BOOKS.flatMap(b => b.series.map(s => s.name))).size;
+  document.getElementById('stat-shelves').textContent = new Set(BOOKS.flatMap(b => b.shelves)).size;
+}
+
+function render() {
+  const term = q.value.trim().toLowerCase();
+  let shown = 0; grid.innerHTML = '';
+  BOOKS.forEach(b => {
+    if (shelf === 'READ' ? !b.isRead : (shelf !== 'ALL' && !b.shelves.includes(shelf))) return;
+    if (term && !(b.title.toLowerCase().includes(term) || b.authorLine.toLowerCase().includes(term) || b.seriesLine.toLowerCase().includes(term))) return;
+    shown++;
+    const card = document.createElement('article');
+    card.className = 'book'; card.tabIndex = 0; card.setAttribute('role', 'button');
+    card.innerHTML = `${coverHTML(b)}<h3>${esc(b.title)}</h3><div class="auth">${esc(b.authorLine)}</div>${b.seriesLine ? `<div class="ser">${esc(b.seriesLine)}</div>` : ''}`;
+    card.addEventListener('click', () => openModal(b));
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(b); } });
+    grid.appendChild(card);
+  });
+  countEl.textContent = shown === BOOKS.length ? `Showing all ${BOOKS.length} books` : `Showing ${shown} of ${BOOKS.length} books`;
+  emptyEl.style.display = shown ? 'none' : 'block';
+}
+
+wireModal();
+showLoading(grid);
+fetchLibrary()
+  .then(books => { BOOKS = books; updateStats(); buildShelfTabs(); render(); })
+  .catch(err => showError(grid, err));
+q.addEventListener('input', render);
+</script>
+</body>
+</html>

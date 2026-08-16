@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DinoBooks — Reading Timeline</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img class="logo" alt="DinoBooks logo — a dinosaur reading" src="assets/logo.png">
+    <h1><span class="dino">Dino</span>Books</h1>
+  </div>
+  <p class="tagline">The reading timeline — every book Libby has read, in the order she read them.</p>
+  <nav class="sitenav">
+    <a href="index.html">Library</a>
+    <a href="timeline.html" class="active">Reading Timeline</a>
+  </nav>
+  <div class="spineshelf" aria-label="Reading statistics">
+    <div class="spine s1"><b id="stat-read">…</b><span>books read</span></div>
+    <div class="spine s2"><b id="stat-sessions">…</b><span>reads logged</span></div>
+    <div class="spine s3"><b id="stat-year">…</b><span>this year</span></div>
+    <div class="spine s4"><b id="stat-rating">…</b><span>avg rating</span></div>
+  </div>
+  <div class="shelfrail"></div>
+  <div class="shelflip"></div>
+</header>
+
+<main class="tl-wrap" id="main">
+</main>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="close" id="close" aria-label="Close">✕</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<footer>Made with <span class="heart">♥</span> (and one helpful dinosaur) for Libby — the DinoBooks library, live from our own database.</footer>
+
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+const main = document.getElementById('main');
+let BOOKS = [];
+
+function updateStats(dated, undatedBooks) {
+  const readBooks = BOOKS.filter(b => b.isRead);
+  const sessions = BOOKS.flatMap(b => b.sessions);
+  const rated = sessions.filter(s => s.rating != null);
+  const year = new Date().getFullYear();
+  const thisYear = dated.filter(e => e.sortDate.startsWith(String(year))).length;
+  document.getElementById('stat-read').textContent = readBooks.length;
+  document.getElementById('stat-sessions').textContent = sessions.length;
+  document.getElementById('stat-year').textContent = thisYear;
+  document.getElementById('stat-rating').textContent = rated.length
+    ? (rated.reduce((a, s) => a + Number(s.rating), 0) / rated.length).toFixed(1) : '—';
+}
+
+function timelineEntries() {
+  // one entry per dated session; undated sessions fall to the read shelf
+  const dated = [], undatedBooks = [];
+  BOOKS.forEach(b => {
+    let hasDated = false;
+    b.sessions.forEach(s => {
+      const d = s.read_end || s.read_start;
+      if (d) { dated.push({ book: b, session: s, sortDate: d }); hasDated = true; }
+    });
+    if (b.isRead && !hasDated) undatedBooks.push(b);
+  });
+  dated.sort((a, b) => b.sortDate.localeCompare(a.sortDate));   // newest first
+  return { dated, undatedBooks };
+}
+
+function entryHTML(e) {
+  const b = e.book, s = e.session;
+  return `
+    <div class="tl-item" data-book="${b.id}" tabindex="0" role="button">
+      ${coverHTML(b, true)}
+      <div class="tl-card">
+        <h3>${esc(b.title)}</h3>
+        <div class="auth">${esc(b.authorLine)}</div>
+        <span class="when">${esc(sessionWhen(s))}</span>
+        ${starsHTML(s.rating)}
+        ${s.review_notes ? `<div class="revnotes">“${esc(s.review_notes)}”</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function render() {
+  const { dated, undatedBooks } = timelineEntries();
+  updateStats(dated, undatedBooks);
+  let html = '';
+
+  if (dated.length) {
+    html += `<p class="tl-intro">Scroll down through time — each stop on the trail is a finished book.</p>`;
+    let currentYear = null;
+    let open = false;
+    dated.forEach(e => {
+      const y = e.sortDate.slice(0, 4);
+      if (y !== currentYear) {
+        if (open) html += `</div>`;
+        html += `<div class="tl-year"><b>${y}</b></div><div class="tl">`;
+        currentYear = y; open = true;
+      }
+      html += entryHTML(e);
+    });
+    if (open) html += `</div>`;
+  } else {
+    html += `
+      <div class="tl-empty">
+        <img src="assets/logo.png" alt="">
+        <h3>The trail starts here…</h3>
+        <p>When Libby finishes a book in the DinoBooks app and logs the date, it will appear
+        on this timeline — cover, dates, rating, and her thoughts. The first footprint is coming soon!</p>
+      </div>`;
+  }
+
+  if (undatedBooks.length) {
+    html += `
+      <section class="readshelf">
+        <h2>Already on the “read” shelf</h2>
+        <p>${undatedBooks.length} book${undatedBooks.length === 1 ? '' : 's'} Libby has read — the dates are lost to time, but the stories aren't.</p>
+        <div class="shelfrow">
+          ${undatedBooks.map(b => `
+            <article class="book" data-book="${b.id}" tabindex="0" role="button">
+              ${coverHTML(b)}<h3>${esc(b.title)}</h3>
+            </article>`).join('')}
+        </div>
+        <div class="shelfrail"></div>
+      </section>`;
+  }
+
+  main.innerHTML = html;
+  main.querySelectorAll('[data-book]').forEach(el => {
+    const open = () => { const b = BOOKS.find(x => String(x.id) === el.dataset.book); if (b) openModal(b); };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  });
+}
+
+wireModal();
+showLoading(main);
+fetchLibrary()
+  .then(books => { BOOKS = books; render(); })
+  .catch(err => showError(main, err));
+</script>
+</body>
+</html>
