@@ -10,7 +10,7 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 /* ---------- live data ---------- */
 async function fetchLibrary() {
   const select = [
-    "id,title,genre,pages,format,isbn,description,is_anthology,cover_url",
+    "id,title,genre,pages,format,isbn,description,is_anthology,cover_url,last_update",
     "book_authors(position,authors(family_name,given_names))",
     "book_series(series_number,series(name))",
     "book_shelves(shelves(name))",
@@ -58,7 +58,7 @@ function normalizeBook(r) {
     description: r.description,
     isAnthology: r.is_anthology,
     anth,
-    cover: r.cover_url,
+    cover: coverUrl(r.cover_url, r.last_update),
     sessions,
     isRead: sessions.length > 0,
     rating: rated.length ? rated[0].rating : null
@@ -66,6 +66,17 @@ function normalizeBook(r) {
 }
 
 /* ---------- covers ---------- */
+// Append a cache-buster derived from the book's last_update so that a replaced
+// cover (same filename) refreshes as soon as the row's last_update changes,
+// while unchanged covers still cache normally. Bump last_update in the DB when
+// you swap a cover:  update books set last_update = now() where id = <id>;
+function coverUrl(url, lastUpdate) {
+  if (!url) return null;
+  const stamp = lastUpdate ? Date.parse(lastUpdate) : "";   // ms since epoch, or "" if absent
+  if (!stamp) return url;
+  return url + (url.includes("?") ? "&" : "?") + "v=" + stamp;
+}
+
 function coverHTML(b, big) {
   let inner;
   if (b.cover) {
