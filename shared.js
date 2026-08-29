@@ -56,6 +56,7 @@ function normalizeBook(r) {
     pages: r.pages,
     format: FMT[r.format] || r.format,
     isbn: r.isbn,
+    isbnSearch: r.isbn ? 'https://isbnsearch.org/isbn/' + r.isbn : null,
     description: r.description,
     isAnthology: r.is_anthology,
     anth,
@@ -141,7 +142,7 @@ function openModal(b) {
         ${b.seriesLine ? `<div><b>Series:</b> ${esc(b.seriesLine)}</div>` : ''}
         ${b.pages ? `<div><b>Pages:</b> ${b.pages}</div>` : ''}
         ${b.format ? `<div><b>Format:</b> ${esc(b.format)}</div>` : ''}
-        ${b.isbn ? `<div><b>ISBN:</b> ${esc(b.isbn)}</div>` : ''}
+        ${b.isbn ? `<div><b>ISBN:</b> ${esc(b.isbn)}  </b> <a href="${b.isbnSearch}" target="_blank" rel="noopener">Search Cover</a></div>` : ''}
         ${b.id ? `<div><b>ID:</b> ${esc(b.id)} - ${esc(b.bookUuid)}</div>` : ''}
       </div>
       ${b.description ? `<div class="desc">${b.description}</div>` : ''}
