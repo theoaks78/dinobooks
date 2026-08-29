@@ -10,7 +10,7 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 /* ---------- live data ---------- */
 async function fetchLibrary() {
   const select = [
-    "id,title,genre,pages,format,isbn,description,is_anthology,cover_url,last_update",
+    "id,book_uuid,title,genre,pages,format,isbn,description,is_anthology,cover_url,last_update",
     "book_authors(position,authors(family_name,given_names))",
     "book_series(series_number,series(name))",
     "book_shelves(shelves(name))",
@@ -45,6 +45,7 @@ function normalizeBook(r) {
     .map(x => ({ title: x.title, author: authorName(x.author) }));
   return {
     id: r.id,
+    bookUuid: r.book_uuid ? r.book_uuid.replace(/-/g, '') : null,
     title: r.title,
     authors,
     authorLine: authors.join(", "),
@@ -141,7 +142,7 @@ function openModal(b) {
         ${b.pages ? `<div><b>Pages:</b> ${b.pages}</div>` : ''}
         ${b.format ? `<div><b>Format:</b> ${esc(b.format)}</div>` : ''}
         ${b.isbn ? `<div><b>ISBN:</b> ${esc(b.isbn)}</div>` : ''}
-        ${b.id ? `<div><b>ID:</b> ${esc(b.id)}</div>` : ''}
+        ${b.id ? `<div><b>ID:</b> ${esc(b.id)} - ${esc(b.bookUuid)}</div>` : ''}
       </div>
       ${b.description ? `<div class="desc">${b.description}</div>` : ''}
       ${b.anth.length ? `<div class="anth"><h4>Stories inside this one</h4><ol>${
