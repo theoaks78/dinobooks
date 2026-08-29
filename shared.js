@@ -141,6 +141,7 @@ function openModal(b) {
         ${b.pages ? `<div><b>Pages:</b> ${b.pages}</div>` : ''}
         ${b.format ? `<div><b>Format:</b> ${esc(b.format)}</div>` : ''}
         ${b.isbn ? `<div><b>ISBN:</b> ${esc(b.isbn)}</div>` : ''}
+        ${b.id ? `<div><b>ID:</b> ${esc(b.id)}</div>` : ''}
       </div>
       ${b.description ? `<div class="desc">${b.description}</div>` : ''}
       ${b.anth.length ? `<div class="anth"><h4>Stories inside this one</h4><ol>${
