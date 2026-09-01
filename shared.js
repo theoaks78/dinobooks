@@ -10,7 +10,7 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 /* ---------- live data ---------- */
 async function fetchLibrary() {
   const select = [
-    "id,book_uuid,title,genre,pages,format,isbn,description,is_anthology,cover_url,last_update",
+    "id,book_uuid,title,pages,format,isbn,description,is_anthology,cover_url,last_update",
     "book_authors(position,authors(family_name,given_names))",
     "book_series(series_number,series(name))",
     "book_shelves(shelves(name))",
