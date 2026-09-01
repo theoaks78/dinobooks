@@ -14,6 +14,7 @@ async function fetchLibrary() {
     "book_authors(position,authors(family_name,given_names))",
     "book_series(series_number,series(name))",
     "book_shelves(shelves(name))",
+    "book_genres(genres(tag,type))",
     "reading_sessions(id,read_start,read_end,rating,review_notes,created_at)",
     "anthology_titles(position,title,author:authors(family_name,given_names))"
   ].join(",");
@@ -37,6 +38,9 @@ function normalizeBook(r) {
     name: x.series ? x.series.name : "", number: x.series_number
   })).filter(x => x.name);
   const shelves = (r.book_shelves || []).map(x => x.shelves ? x.shelves.name : "").filter(Boolean);
+  const genres = (r.book_genres || [])
+    .map(x => x.genres ? x.genres.tag : "").filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
   const sessions = (r.reading_sessions || []).slice().sort((a, b) =>
     (b.read_end || b.read_start || b.created_at || "").localeCompare(a.read_end || a.read_start || a.created_at || ""));
   const rated = sessions.filter(s => s.rating != null);
@@ -52,7 +56,8 @@ function normalizeBook(r) {
     series: seriesEntries,
     seriesLine: seriesEntries.map(s => s.number ? `${s.name} (${s.number})` : s.name).join(", "),
     shelves,
-    genre: r.genre,
+    genres,                       // array of tag strings from the genres tables
+    genreLine: genres.join(", "), // convenience: comma-joined for display
     pages: r.pages,
     format: FMT[r.format] || r.format,
     isbn: r.isbn,
@@ -136,13 +141,13 @@ function openModal(b) {
         ${b.shelves.map(s => `<span class="pill shelfpill">${esc(s)}</span>`).join("")}
         ${b.isRead ? '<span class="pill readpill">Read ✓</span>' : ''}
         ${b.rating != null ? `<span class="pill ratepill">${starsHTML(b.rating)}</span>` : ''}
-        ${b.genre ? `<span class="pill">${esc(b.genre)}</span>` : ''}
+        ${b.genres.map(g => `<span class="pill genrepill">${esc(g)}</span>`).join("")}
       </div>
       <div class="facts">
         ${b.seriesLine ? `<div><b>Series:</b> ${esc(b.seriesLine)}</div>` : ''}
         ${b.pages ? `<div><b>Pages:</b> ${b.pages}</div>` : ''}
         ${b.format ? `<div><b>Format:</b> ${esc(b.format)}</div>` : ''}
-        ${b.isbn ? `<div><b>ISBN:</b> ${esc(b.isbn)}  </b> <a href="${b.isbnSearch}" target="_blank" rel="noopener">Search Cover</a></div>` : ''}
+        ${b.isbn ? `<div><b>ISBN:</b> ${esc(b.isbn)}  <a href="${b.isbnSearch}" target="_blank" rel="noopener">Search Cover</a></div>` : ''}
         ${b.id ? `<div><b>ID:</b> ${esc(b.id)} - ${esc(b.bookUuid)}</div>` : ''}
       </div>
       ${b.description ? `<div class="desc">${b.description}</div>` : ''}
