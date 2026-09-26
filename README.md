@@ -1,13 +1,39 @@
 # DinoBooks — the website
 
-A small, read-only website for the DinoBooks library. Two pages:
+The DinoBooks library on the web, in two halves:
 
-- **index.html** — the Library: every book on its shelf, with search, shelf tabs, and a detail view
-- **timeline.html** — the Reading Timeline: dated reads on a trail through time, plus the "already read" shelf
+- **The showcase** (`index.html`, `timeline.html`): anyone with the link can browse.
+  It only reads, through the publishable key, and never changes anything.
+- **The app** (`app/`): the real DinoBooks app, compiled for a browser. Anyone can
+  open it, but it stops at the sign-in screen. Signed in, it does everything the
+  phone app does except what needs a camera (scanning barcodes, photographing
+  covers, reading a back cover). On a PC you type the ISBN and choose a cover file.
 
-The site has **no build step and no server code**. Both pages fetch live data from the
-Supabase REST API when they load, so any book added to the database appears on the
-website the next time the page is refreshed — no redeploy needed.
+Live at `https://theoaks78.github.io/dinobooks/`. The **✎ Sign in to edit** button
+on both showcase pages opens the app.
+
+## Showcase pages
+
+- **Library**: every book, with search (title, author, series, genre,
+  character/franchise, ISBN), shelf tabs, a Read tab, **Group by** (Title / Author /
+  Shelf / Audience / Audience + Shelf, the app's groupings, with timber shelf
+  headers that collapse) and **Series together** (series bands, in series-number
+  order). The **Genre** menu filters to one genre and shows what it means in this
+  library. The grouping and series choice are remembered in that browser.
+- **Book detail**: the cover on its engraved shelf (audience + shelf), READ banner
+  and rating, format, publisher and date, pages, character/franchise, ISBN with the
+  isbnsearch link, signed, genres, description, contents and reading history.
+  **Tap a genre** to see its definition and a link to every book carrying it.
+- **Reading Timeline**: newest first, by year. As in the app, **the cover opens
+  the book and the card opens that book's reading history**, and the title there
+  opens the book. Stats: books read, reads logged, **past year** (a rolling twelve
+  months, like the app) and average rating.
+
+Not shown on the public pages, on purpose: loans (`book_movements` has no anon
+policy), Up Next, notes and location. Signed in, the app shows all of them.
+
+The site has **no build step and no server code**. The showcase fetches live from
+the Supabase REST API on every load, so data changes need no update at all.
 
 ## Files
 
@@ -16,46 +42,50 @@ website the next time the page is refreshed — no redeploy needed.
 | `index.html` | Library page |
 | `timeline.html` | Reading Timeline page |
 | `styles.css` | Shared theme (paper, spruce, honey, timber) |
-| `shared.js` | Data fetching, covers, modal, helpers |
+| `shared.js` | Data fetching, covers, shelves, genres, the book and history pop-ups |
 | `config.js` | Supabase URL + publishable key |
 | `assets/logo.png`, `assets/favicon.png` | The dinosaur |
+| `app/` | The web build of the app. **Generated. Never edit by hand.** |
 
-## Hosting on GitHub Pages (one-time setup, ~5 minutes)
+## Updating the showcase
 
-1. Sign in at **github.com**.
-2. Click the **+** (top-right) → **New repository**.
-   - Name: `dinobooks` (or anything you like)
-   - Visibility: **Public** (required for free GitHub Pages)
-   - Leave everything else unticked → **Create repository**.
-3. On the new repo page, click the link **"uploading an existing file"**
-   (or `Add file → Upload files`).
-4. Drag in ALL the site files **including the `assets` folder** — the easiest way is to
-   drag the *contents* of this zip (not the zip itself) into the upload box.
-   Then click **Commit changes**.
-5. Go to the repo's **Settings → Pages** (left sidebar).
-   - Under *Build and deployment*: Source = **Deploy from a branch**
-   - Branch = **main**, Folder = **/ (root)** → **Save**.
-6. Wait a minute or two, then refresh Settings → Pages. Your site is live at:
+Edit a file in the GitHub web UI (pencil icon) or upload a replacement. The site
+republishes within a minute or two.
 
-   `https://theoaks78.github.io/dinobooks/`
+## Updating the app (`app/` folder)
 
-Send that link to Libby. Bookmark it on her phone's home screen and it behaves
-almost like an app.
+The app folder is produced from the Flutter project, not written by hand:
 
-## Updating the site later
+1. In `F:\FlutterApps\dinobooks`, run `.\build-web.ps1`. It analyzes, runs
+   `flutter build web --base-href /dinobooks/app/`, empties
+   `F:\Dino Books\dinobooks-site\app` and copies the new build in.
+2. On github.com, open the `dinobooks` repository → **Add file → Upload files** →
+   drag in the **`app` folder** (the folder itself, so the paths stay `app/...`).
+   Commit.
+3. Open `https://theoaks78.github.io/dinobooks/app/`. The first load after an
+   update may need **Ctrl+F5**.
 
-Edit a file in the GitHub web UI (pencil icon) or upload a replacement file —
-the site republishes automatically within a minute or two.
-Data changes (new books, reading sessions) need **no** update at all.
+Rebuild it whenever you build an APK, so the browser and the phones run the same
+code. The base path matters: a build without `--base-href /dinobooks/app/` loads a
+blank page on GitHub Pages.
 
 ## Security notes
 
-- The key in `config.js` is a *publishable* key — it is designed to be public and
-  only grants what the database's Row Level Security allows. For this project
-  that is **read-only** access to the catalogue tables.
-- Writes (adding/editing books, sessions, loans) still require a logged-in user —
-  the website cannot modify anything.
-- The `book_movements` table (who borrowed what) is **not** readable by the
-  website at all.
-- Anyone who has the website link can browse the catalogue and review notes.
-  To take the site private again, delete the "anon read" policies in Supabase.
+- The key in `config.js` is a *publishable* key. It is designed to be public and only
+  grants what Row Level Security allows: **read-only** access to the catalogue
+  tables for anyone not signed in.
+- **Signed in means full access.** Every table has an `auth full access` policy for
+  the `authenticated` role, and that is what lets the app (phone or web) edit. So
+  **new sign-ups must stay switched off** in Supabase (Authentication → Sign In /
+  Providers → *Allow new users to sign up*: off). If sign-ups were on, anyone could
+  create an account with the public key and edit or delete the library. This was
+  already true for the phone app; the web app just makes the sign-in page easier
+  to find. Accounts are added by hand in the dashboard (Authentication → Users →
+  Add user).
+- `app_settings` (the Google Books key) has no anon policy, so the showcase can't
+  read it. The web app reads it only once signed in, like the phone app.
+- The Anthropic key never leaves Supabase's Edge Function secrets. Genre and Up Next
+  suggestions work from the web app because the functions answer browsers (CORS)
+  and check the signed-in user's token.
+- To take the showcase private again, delete the "anon read" policies in Supabase.
+  The app keeps working for signed-in users either way.

@@ -17,6 +17,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{background:var(--paper);color:var(--ink);font-family:'Nunito Sans',system-ui,sans-serif;line-height:1.5}
+body.noscroll{overflow:hidden}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
 
 /* ---------- header ---------- */
 header{background:var(--ink);color:var(--paper);padding:22px 20px 0;overflow:hidden}
@@ -28,22 +31,24 @@ header{background:var(--ink);color:var(--paper);padding:22px 20px 0;overflow:hid
 @media (max-width:480px){.brand .logo{height:48px}}
 
 /* ---------- site navigation ---------- */
-.sitenav{max-width:1060px;margin:16px auto 0;display:flex;justify-content:center;gap:10px}
+.sitenav{max-width:1060px;margin:16px auto 0;display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 .sitenav a{color:var(--paper);text-decoration:none;font-weight:800;letter-spacing:.4px;
   padding:8px 18px;border-radius:999px;border:2px solid rgba(246,241,227,.35);transition:all .2s}
 .sitenav a:hover{border-color:var(--honey);color:var(--honey)}
 .sitenav a.active{background:var(--honey);border-color:var(--honey);color:#3a3208}
+.sitenav a.editlink{border-style:dashed;opacity:.9}
+.sitenav a.editlink:hover{opacity:1}
 
 /* stats printed on book spines standing on a timber shelf */
 .spineshelf{max-width:760px;margin:26px auto 0;display:flex;justify-content:center;align-items:flex-end;gap:7px;padding:0 8px}
 .spine{border-radius:5px 5px 0 0;display:flex;flex-direction:column;justify-content:center;align-items:center;
-  writing-mode:vertical-rl;transform:rotate(180deg);padding:14px 0;box-shadow:inset -3px 0 6px rgba(0,0,0,.25);
+  writing-mode:vertical-rl;transform:rotate(180deg);padding:8px 0;box-shadow:inset -3px 0 6px rgba(0,0,0,.25);
   font-weight:800;letter-spacing:.6px;color:rgba(255,253,246,.95);transition:transform .25s ease}
 .spine:hover{transform:rotate(180deg) translateY(-6px)}
 .spine b{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:900}
-.spine span{font-size:.72rem;text-transform:uppercase;opacity:.85;margin-top:6px}
+.spine span{font-size:.72rem;text-transform:uppercase;opacity:.85;margin-top:6px;white-space:nowrap}
 .s1{height:150px;width:52px;background:linear-gradient(90deg,#d8ab16,#fed342);color:#3a3208}.s1 span{opacity:1}
-.s2{height:126px;width:46px;background:linear-gradient(90deg,#0a7448,#0c905b)}
+.s2{height:140px;width:46px;background:linear-gradient(90deg,#0a7448,#0c905b)}
 .s3{height:138px;width:48px;background:linear-gradient(90deg,#961b58,#b8236f)}
 .s4{height:112px;width:44px;background:linear-gradient(90deg,#1c56b8,#226ae1)}
 .shelfrail{height:14px;background:linear-gradient(180deg,var(--wood),var(--wood-dark));border-radius:3px;max-width:820px;margin:0 auto;box-shadow:0 6px 12px rgba(0,0,0,.35)}
@@ -90,17 +95,26 @@ header{background:var(--ink);color:var(--paper);padding:22px 20px 0;overflow:hid
   box-shadow:0 24px 60px rgba(0,0,0,.4);position:relative;padding:26px}
 .close{position:sticky;top:0;float:right;border:none;background:var(--paper);width:34px;height:34px;border-radius:50%;
   cursor:pointer;font-size:1rem;font-weight:900;color:var(--ink);box-shadow:var(--shadow)}
-.modal-body{display:grid;grid-template-columns:180px 1fr;gap:22px}
-.modal-body .cover{max-width:180px}
-@media (max-width:560px){.modal-body{grid-template-columns:1fr}.modal-body .cover{max-width:150px;margin:0 auto}}
+.modal-body{display:grid;grid-template-columns:200px 1fr;gap:24px}
+.modal-body.single{display:block}
+.modal-cover .cover{max-width:200px;border-radius:4px 8px 0 0}
+.modal-cover .woodshelf{margin:0 -6px}
+@media (max-width:600px){.modal{padding:20px 16px}.modal-body{grid-template-columns:1fr}.modal-cover{max-width:230px;width:100%;margin:0 auto}.modal-cover .cover{max-width:160px;margin:0 auto}}
 .modal-info h2{font-family:'Fraunces',serif;font-weight:900;font-size:1.45rem;line-height:1.2}
 .modal-info .by{margin-top:4px;opacity:.75;font-weight:700}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .pill{font-size:.72rem;font-weight:800;letter-spacing:.4px;padding:4px 11px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+button.genrepill{cursor:pointer;text-decoration:underline dotted rgba(34,55,44,.45);text-underline-offset:3px;transition:all .15s}
+button.genrepill:hover{border-color:var(--honey)}
+button.genrepill.on{background:var(--ink);color:var(--paper);border-color:var(--ink);text-decoration:none}
 .shelfpill{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .readpill{background:var(--honey);color:#3a3208;border-color:var(--honey)}
 .ratepill{background:#fff7dd;border-color:#e1dcab}
-.facts{margin-top:14px;display:grid;gap:5px;font-size:.9rem}
+.facts{margin-top:14px;display:grid;gap:6px;font-size:.9rem}
+.fact{display:grid;grid-template-columns:150px 1fr;gap:10px}
+.fact b{opacity:.7;font-weight:700}
+.fact a{color:var(--moss);font-weight:700;margin-left:6px}
+@media (max-width:420px){.fact{grid-template-columns:1fr;gap:0}}
 .desc{margin-top:14px;font-size:.9rem;line-height:1.55;opacity:.9}
 .anth{margin-top:16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .anth h4{font-family:'Fraunces',serif;margin-bottom:8px}
@@ -123,12 +137,15 @@ header{background:var(--ink);color:var(--paper);padding:22px 20px 0;overflow:hid
 .tl{position:relative;padding-left:34px}
 .tl::before{content:"";position:absolute;left:12px;top:6px;bottom:6px;width:6px;border-radius:3px;
   background:linear-gradient(180deg,var(--wood),var(--wood-dark));box-shadow:0 0 0 3px rgba(139,94,60,.15)}
-.tl-item{position:relative;display:flex;gap:16px;padding:12px 0 22px;cursor:pointer}
+.tl-item{position:relative;display:flex;gap:16px;padding:12px 0 22px}
+.tl-cover,.tl-card{cursor:pointer;outline-offset:4px}
+.tl-cover:focus-visible,.tl-card:focus-visible{outline:3px solid var(--honey);border-radius:10px}
+.tl-cover:hover .cover{transform:translateY(-4px) rotate(-.6deg);box-shadow:0 12px 22px rgba(34,55,44,.28)}
 .tl-item::before{content:"";position:absolute;left:-29px;top:24px;width:16px;height:16px;border-radius:50%;
   background:var(--honey);border:3px solid var(--ink);box-shadow:0 0 0 3px var(--paper)}
-.tl-item .cover{width:84px;flex:none}
+.tl-cover{width:84px;flex:none}
 .tl-card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;flex:1;transition:transform .2s}
-.tl-item:hover .tl-card{transform:translateX(4px)}
+.tl-card:hover{transform:translateX(4px)}
 .tl-card h3{font-size:1.02rem;font-weight:800;line-height:1.25}
 .tl-card .auth{font-size:.82rem;opacity:.75}
 .tl-card .when{display:inline-block;margin-top:6px;font-size:.78rem;font-weight:800;background:var(--paper);
@@ -161,3 +178,83 @@ header{background:var(--ink);color:var(--paper);padding:22px 20px 0;overflow:hid
 /* ---------- footer ---------- */
 footer{text-align:center;padding:34px 16px 44px;font-size:.9rem;opacity:.65}
 footer .heart{color:var(--rose)}
+
+/* ============================================================
+   Added in the September 2026 refresh
+   ============================================================ */
+
+/* ---------- second control row ---------- */
+.controls-inner.tools{margin-top:10px;justify-content:flex-start;gap:10px 18px;font-size:.88rem}
+.tool{display:flex;align-items:center;gap:7px;font-weight:700}
+.tool select{font:inherit;font-weight:600;color:var(--ink);background:var(--card);border:1.5px solid var(--line);
+  border-radius:10px;padding:5px 8px;max-width:210px}
+.tool select:focus-visible,.tool input:focus-visible,.btnlink:focus-visible,.tab:focus-visible{outline:3px solid var(--honey);outline-offset:2px}
+.tool.check input{width:17px;height:17px;accent-color:var(--honey)}
+.btnlink{background:none;border:none;cursor:pointer;color:var(--moss);text-decoration:underline;padding:4px 2px}
+/* On a phone the controls are too tall to follow you down the page. */
+@media (max-width:700px){.controls{position:static;padding:10px 12px}.controls-inner.tools{gap:8px 14px}}
+
+.genrenote{max-width:1028px;margin:6px auto 0;padding:10px 14px;background:var(--card);border:1px solid var(--line);
+  border-left:5px solid var(--honey);border-radius:10px;display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:.9rem}
+@media (max-width:1060px){.genrenote{margin:6px 16px 0}}
+.chipx{flex:none;border:1.5px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 12px;font-weight:800;cursor:pointer}
+.chipx:hover{border-color:var(--honey)}
+
+/* ---------- library sections ---------- */
+.library{max-width:1060px;margin:10px auto 60px;padding:0 16px}
+.library .grid{max-width:none;margin:10px 0 30px;padding:0}
+.libsection+.libsection{margin-top:10px}
+.sectionhead{display:block;width:100%;border:none;background:none;padding:0;margin:18px 0 6px;cursor:pointer;text-align:left}
+.sectionhead:focus-visible{outline:3px solid var(--honey);outline-offset:3px;border-radius:4px}
+.shelfcount{position:absolute;right:44px;top:50%;transform:translateY(-50%);font-weight:800;font-size:.75rem;
+  background:rgba(46,27,14,.28);color:#f3dcc0;padding:2px 9px;border-radius:999px}
+.chev{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#f3dcc0;font-size:.9rem}
+
+.seriesband{display:flex;align-items:center;gap:10px;margin:18px 0 0;color:var(--moss);font-weight:800;font-size:.9rem}
+.seriesband::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,rgba(92,122,94,.45),transparent)}
+.seriesband i{font-style:normal;font-size:.72rem;background:rgba(92,122,94,.14);border-radius:999px;padding:1px 8px}
+.seriesband.standalone{color:rgba(34,55,44,.55)}
+
+/* ---------- the app's WoodShelf: a plank with the label cut in ---------- */
+.woodshelf{position:relative}
+.woodshelf .plank{position:relative;padding:7px 70px;text-align:center;border-radius:3px 3px 0 0;
+  background:
+    repeating-linear-gradient(178deg,transparent 0 9px,rgba(60,35,18,.08) 9px 10px,transparent 10px 17px,rgba(255,225,190,.06) 17px 18px),
+    linear-gradient(180deg,#9e6e48,var(--wood) 55%,#7a4e30)}
+.modal-cover .woodshelf .plank{padding:6px 10px}
+.woodshelf .plank-edge{height:7px;background:linear-gradient(180deg,var(--wood-dark),#4a2e19);border-radius:0 0 3px 3px;
+  box-shadow:0 7px 12px rgba(0,0,0,.28)}
+.engraved{font-family:'Fraunces',serif;font-weight:700;text-transform:uppercase;letter-spacing:3px;font-size:1rem;
+  color:#5a3a20;text-shadow:0 -1.2px 1.5px rgba(46,27,14,.7),0 1.4px 1.2px rgba(206,158,108,.6)}
+.modal-cover .engraved{font-size:.78rem;letter-spacing:1.6px}
+@media (max-width:480px){.sectionhead .plank{padding:7px 64px 7px 14px;text-align:left}.sectionhead .engraved{letter-spacing:1.5px;font-size:.85rem}}
+
+/* ---------- book detail additions ---------- */
+.readbanner{display:inline-flex;align-items:center;gap:4px;background:var(--honey);color:#3a3208;font-weight:900;
+  font-size:.78rem;letter-spacing:.6px;padding:4px 12px;border-radius:999px;margin-bottom:10px}
+.readbanner .stars{color:#3a3208;margin-left:4px}
+.serline{font-style:italic;color:var(--moss);font-weight:700;margin-top:2px}
+.genres{margin-top:14px}
+.genres .pills{margin-top:0}
+.gdef{margin-top:10px;background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--honey);
+  border-radius:10px;padding:10px 12px;font-size:.87rem;line-height:1.5}
+.gdef .gtype{font-size:.72rem;opacity:.6;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-left:4px}
+.linkish{display:inline-block;margin-top:6px;border:none;background:none;padding:0;cursor:pointer;color:var(--moss);
+  font-weight:800;text-decoration:underline;font-size:.85rem}
+.desc p{margin:0 0 .7em}
+.bookid{margin-top:18px;font-size:.72rem;opacity:.45}
+
+/* ---------- a book's reading history (from the Timeline) ---------- */
+.hist-head{display:flex;gap:16px;align-items:center;margin-right:40px}
+.hist-cover{width:90px;flex:none}
+.titlelink{display:block;border:none;background:none;padding:0 0 3px;cursor:pointer;text-align:left;
+  font-family:'Fraunces',serif;font-weight:900;font-size:1.35rem;line-height:1.2;
+  border-bottom:2px solid rgba(34,55,44,.18);width:100%}
+.titlelink:hover{border-bottom-color:var(--honey)}
+.titlelink::after{content:" ›";color:var(--honey)}
+.history li.this-read{background:#fff7dd;border-radius:8px;margin:0 -8px;padding:6px 8px;box-shadow:inset 3px 0 0 var(--honey)}
+
+/* ---------- buttons, errors ---------- */
+.btn{border:none;background:var(--honey);color:#3a3208;font-weight:800;padding:8px 18px;border-radius:999px;cursor:pointer}
+.loaderr details{margin-top:10px;font-size:.8rem;opacity:.8}
+.loaderr code{display:block;margin-top:6px;word-break:break-all}

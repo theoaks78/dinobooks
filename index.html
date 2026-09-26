@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DinoBooks — Our Library</title>
+<meta name="description" content="The DinoBooks library — every book on its shelf, live from our own database.">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,12 +22,13 @@
   <nav class="sitenav">
     <a href="index.html" class="active">Library</a>
     <a href="timeline.html">Reading Timeline</a>
+    <a href="app/" class="editlink" title="Opens the DinoBooks app in your browser. Signing in is needed to change anything.">✎ Sign in to edit</a>
   </nav>
   <div class="spineshelf" aria-label="Library statistics">
     <div class="spine s1"><b id="stat-books">…</b><span>books</span></div>
     <div class="spine s2"><b id="stat-authors">…</b><span>authors</span></div>
     <div class="spine s3"><b id="stat-series">…</b><span>series</span></div>
-    <div class="spine s4"><b id="stat-shelves">…</b><span>shelves</span></div>
+    <div class="spine s4"><b id="stat-genres">…</b><span>genres</span></div>
   </div>
   <div class="shelfrail"></div>
   <div class="shelflip"></div>
@@ -34,21 +37,38 @@
 <div class="controls">
   <div class="controls-inner">
     <div class="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="Search a title, author or series…" aria-label="Search books">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search a title, author, series, genre, character or ISBN…" aria-label="Search books">
     </div>
-    <div class="tabs" id="tabs" role="tablist">
-      <button class="tab active" data-shelf="ALL">All</button>
-      <button class="tab" data-shelf="READ">Read ✓</button>
+    <div class="tabs" id="tabs" role="group" aria-label="Shelf">
+      <button class="tab active" data-shelf="ALL" aria-pressed="true">All</button>
+      <button class="tab" data-shelf="READ" aria-pressed="false">Read ✓</button>
     </div>
+  </div>
+  <div class="controls-inner tools">
+    <label class="tool">Group by
+      <select id="grouping">
+        <option value="title">Title</option>
+        <option value="author">Author</option>
+        <option value="shelf">Shelf</option>
+        <option value="audience">Audience</option>
+        <option value="audienceShelf">Audience + Shelf</option>
+      </select>
+    </label>
+    <label class="tool check"><input type="checkbox" id="seriesToggle"> Series together</label>
+    <label class="tool">Genre
+      <select id="genreSel"><option value="">Any genre</option></select>
+    </label>
+    <button type="button" class="tool btnlink" id="collapseAll" hidden>Collapse all</button>
   </div>
 </div>
 
-<div class="count" id="count"></div>
-<main class="grid" id="grid"></main>
+<div class="count" id="count" aria-live="polite"></div>
+<div class="genrenote" id="genreNote" hidden></div>
+<main class="library" id="library"></main>
 <div class="empty" id="empty" style="display:none">No books match that — try a different word, or another shelf.</div>
 
-<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal">
     <button class="close" id="close" aria-label="Close">✕</button>
     <div class="modal-body" id="modalBody"></div>
@@ -60,56 +80,237 @@
 <script src="config.js"></script>
 <script src="shared.js"></script>
 <script>
-const grid = document.getElementById('grid'), q = document.getElementById('q'),
+const lib = document.getElementById('library'), q = document.getElementById('q'),
       countEl = document.getElementById('count'), emptyEl = document.getElementById('empty'),
-      tabsEl = document.getElementById('tabs');
-let BOOKS = [], shelf = 'ALL';
+      tabsEl = document.getElementById('tabs'), groupSel = document.getElementById('grouping'),
+      seriesToggle = document.getElementById('seriesToggle'), genreSel = document.getElementById('genreSel'),
+      collapseBtn = document.getElementById('collapseAll'), genreNote = document.getElementById('genreNote');
 
+const NO_SHELF = 'Unshelved', NO_AUDIENCE = 'Audience not set', NO_SERIES = 'No Series';
+
+let BOOKS = [], GENRES = new Map(), shelf = 'ALL', genre = '';
+let grouping = prefs.get('grouping', 'title');
+let breakOutSeries = prefs.get('series', 'on') === 'on';
+const collapsed = new Set();
+if (![...groupSel.options].some(o => o.value === grouping)) grouping = 'title';
+groupSel.value = grouping;
+seriesToggle.checked = breakOutSeries;
+
+/* ---------- filters ---------- */
 function buildShelfTabs() {
-  const names = [...new Set(BOOKS.flatMap(b => b.shelves))].sort();
+  const names = [...new Set(BOOKS.map(b => b.shelf).filter(Boolean))].sort();
   const readTab = tabsEl.querySelector('[data-shelf="READ"]');
   names.forEach(n => {
     const btn = document.createElement('button');
-    btn.className = 'tab'; btn.dataset.shelf = n; btn.textContent = n;
+    btn.className = 'tab'; btn.dataset.shelf = n; btn.textContent = n; btn.setAttribute('aria-pressed', 'false');
     tabsEl.insertBefore(btn, readTab);
   });
   tabsEl.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-    tabsEl.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    t.classList.add('active'); shelf = t.dataset.shelf; render();
+    tabsEl.querySelectorAll('.tab').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-pressed', 'false'); });
+    t.classList.add('active'); t.setAttribute('aria-pressed', 'true');
+    shelf = t.dataset.shelf; render();
   }));
+}
+
+function buildGenreSelect() {
+  GENRES = new Map();
+  BOOKS.forEach(b => b.genres.forEach(g => {
+    const e = GENRES.get(g.tag) || { ...g, count: 0 };
+    e.count++; GENRES.set(g.tag, e);
+  }));
+  [...GENRES.values()].sort((a, b) => a.tag.localeCompare(b.tag)).forEach(g => {
+    const o = document.createElement('option');
+    o.value = g.tag; o.textContent = `${g.tag} (${g.count})`;
+    genreSel.appendChild(o);
+  });
+}
+
+/* Called from a genre pill in the book's detail. */
+window.filterByGenre = function (tag) {
+  genre = GENRES.has(tag) ? tag : '';
+  genreSel.value = genre;
+  render();
+  lib.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function showGenreNote() {
+  if (!genre) { genreNote.hidden = true; return; }
+  const g = GENRES.get(genre);
+  genreNote.innerHTML = `<span><b>${esc(genre)}</b>${g && g.definition ? ` — ${esc(g.definition)}` : ''}</span>
+    <button type="button" class="chipx" aria-label="Clear the genre filter">✕ Clear</button>`;
+  genreNote.querySelector('.chipx').addEventListener('click', () => { genre = ''; genreSel.value = ''; render(); });
+  genreNote.hidden = false;
+}
+
+function matches(b, term) {
+  if (shelf === 'READ' ? !b.isRead : (shelf !== 'ALL' && b.shelf !== shelf)) return false;
+  if (genre && !b.genres.some(g => g.tag === genre)) return false;
+  if (!term) return true;
+  const digits = term.replace(/[^0-9x]/gi, '');
+  return b.title.toLowerCase().includes(term)
+      || b.authorLine.toLowerCase().includes(term)
+      || b.seriesLine.toLowerCase().includes(term)
+      || b.genres.some(g => g.tag.toLowerCase().includes(term))
+      || b.characters.some(c => c.toLowerCase().includes(term))
+      || (digits.length >= 4 && b.isbn && b.isbn.toLowerCase().replace(/[^0-9x]/g, '').includes(digits));
+}
+
+/* ---------- grouping (the app's rules) ---------- */
+const audienceRank = a => { const i = AUDIENCES.indexOf(a); return i === -1 ? AUDIENCES.length : i; };
+const shelfCompare = (a, b) => a === NO_SHELF ? (b === NO_SHELF ? 0 : 1) : b === NO_SHELF ? -1 : a.localeCompare(b);
+
+function groupBooks(list) {
+  const bucket = keyOf => {
+    const m = new Map();
+    list.forEach(b => { const k = keyOf(b); if (!m.has(k)) m.set(k, []); m.get(k).push(b); });
+    return m;
+  };
+  switch (grouping) {
+    case 'author':
+      return [{ label: null, books: list.slice().sort((a, b) =>
+        (a.authorSort || '￿').localeCompare(b.authorSort || '￿')) }];
+    case 'shelf': {
+      const m = bucket(b => b.shelf || NO_SHELF);
+      return [...m.keys()].sort(shelfCompare).map(k => ({ label: k, books: m.get(k) }));
+    }
+    case 'audience': {
+      const m = bucket(b => b.audience || NO_AUDIENCE);
+      return [...m.keys()].sort((a, b) => audienceRank(a) - audienceRank(b)).map(k => ({ label: k, books: m.get(k) }));
+    }
+    case 'audienceShelf': {
+      const m = bucket(b => `${b.audience || NO_AUDIENCE}|${b.shelf || NO_SHELF}`);
+      return [...m.keys()].sort((x, y) => {
+        const [ax, sx] = x.split('|'), [ay, sy] = y.split('|');
+        return (audienceRank(ax) - audienceRank(ay)) || shelfCompare(sx, sy);
+      }).map(k => {
+        const [a, s] = k.split('|');
+        const label = [a !== NO_AUDIENCE ? a : '', s !== NO_SHELF ? s : ''].filter(Boolean).join(' ') || 'Unsorted';
+        return { label, books: m.get(k) };
+      });
+    }
+    default:
+      return [{ label: null, books: list }];
+  }
+}
+
+/* One section split into its series, standalone books last. A section with
+   no series at all gets no band — "No Series" over everything is noise. */
+function seriesRuns(books) {
+  if (!breakOutSeries) return [{ label: null, books }];
+  const m = new Map();
+  books.forEach(b => {
+    const k = b.series[0] ? b.series[0].name : NO_SERIES;
+    if (!m.has(k)) m.set(k, []); m.get(k).push(b);
+  });
+  if (m.size === 1 && m.has(NO_SERIES)) return [{ label: null, books }];
+  return [...m.keys()]
+    .sort((a, b) => a === NO_SERIES ? (b === NO_SERIES ? 0 : 1) : b === NO_SERIES ? -1 : a.localeCompare(b))
+    .map(k => ({
+      label: k,
+      books: k === NO_SERIES ? m.get(k)
+        : m.get(k).slice().sort((x, y) => seriesNumberCompare(x.series[0].number, y.series[0].number) || x.title.localeCompare(y.title))
+    }));
+}
+
+/* ---------- drawing ---------- */
+function cardFor(b) {
+  const card = document.createElement('article');
+  card.className = 'book'; card.tabIndex = 0; card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', `${b.title}${b.authorLine ? ', by ' + b.authorLine : ''}`);
+  card.innerHTML = `${coverHTML(b)}<h3>${esc(b.title)}</h3><div class="auth">${esc(b.authorLine)}</div>${b.seriesLine ? `<div class="ser">${esc(b.seriesLine)}</div>` : ''}`;
+  activate(card, () => openModal(b));
+  return card;
+}
+
+function gridOf(books) {
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  books.forEach(b => grid.appendChild(cardFor(b)));
+  return grid;
+}
+
+function render() {
+  const term = q.value.trim().toLowerCase();
+  const list = BOOKS.filter(b => matches(b, term));
+  const searching = term.length > 0;
+  const groups = groupBooks(list);
+  lib.innerHTML = '';
+
+  groups.forEach(group => {
+    const section = document.createElement('section');
+    section.className = 'libsection';
+    const shut = group.label && !searching && collapsed.has(group.label);
+    if (group.label) {
+      const head = document.createElement('button');
+      head.type = 'button';
+      head.className = 'sectionhead';
+      head.setAttribute('aria-expanded', String(!shut));
+      head.innerHTML = woodShelfHTML(group.label,
+        `<span class="shelfcount">${group.books.length}</span><span class="chev" aria-hidden="true">${shut ? '▸' : '▾'}</span>`);
+      head.addEventListener('click', () => {
+        if (!collapsed.delete(group.label)) collapsed.add(group.label);
+        render();
+      });
+      section.appendChild(head);
+    }
+    if (!shut) {
+      seriesRuns(group.books).forEach(run => {
+        if (run.label) {
+          const band = document.createElement('div');
+          band.className = 'seriesband' + (run.label === NO_SERIES ? ' standalone' : '');
+          band.innerHTML = `<span>${esc(run.label)}</span><i>${run.books.length}</i>`;
+          section.appendChild(band);
+        }
+        section.appendChild(gridOf(run.books));
+      });
+    }
+    lib.appendChild(section);
+  });
+
+  const hasSections = groups.some(g => g.label);
+  collapseBtn.hidden = !hasSections || searching;
+  collapseBtn.textContent = collapsed.size ? 'Open all' : 'Collapse all';
+  countEl.textContent = list.length === BOOKS.length
+    ? `Showing all ${BOOKS.length} books`
+    : `Showing ${list.length} of ${BOOKS.length} books`;
+  emptyEl.style.display = list.length ? 'none' : 'block';
+  showGenreNote();
 }
 
 function updateStats() {
   document.getElementById('stat-books').textContent = BOOKS.length;
   document.getElementById('stat-authors').textContent = new Set(BOOKS.flatMap(b => b.authors)).size;
   document.getElementById('stat-series').textContent = new Set(BOOKS.flatMap(b => b.series.map(s => s.name))).size;
-  document.getElementById('stat-shelves').textContent = new Set(BOOKS.flatMap(b => b.shelves)).size;
+  document.getElementById('stat-genres').textContent = GENRES.size;
 }
 
-function render() {
-  const term = q.value.trim().toLowerCase();
-  let shown = 0; grid.innerHTML = '';
-  BOOKS.forEach(b => {
-    if (shelf === 'READ' ? !b.isRead : (shelf !== 'ALL' && !b.shelves.includes(shelf))) return;
-    if (term && !(b.title.toLowerCase().includes(term) || b.authorLine.toLowerCase().includes(term) || b.seriesLine.toLowerCase().includes(term))) return;
-    shown++;
-    const card = document.createElement('article');
-    card.className = 'book'; card.tabIndex = 0; card.setAttribute('role', 'button');
-    card.innerHTML = `${coverHTML(b)}<h3>${esc(b.title)}</h3><div class="auth">${esc(b.authorLine)}</div>${b.seriesLine ? `<div class="ser">${esc(b.seriesLine)}</div>` : ''}`;
-    card.addEventListener('click', () => openModal(b));
-    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(b); } });
-    grid.appendChild(card);
-  });
-  countEl.textContent = shown === BOOKS.length ? `Showing all ${BOOKS.length} books` : `Showing ${shown} of ${BOOKS.length} books`;
-  emptyEl.style.display = shown ? 'none' : 'block';
-}
+/* ---------- wiring ---------- */
+groupSel.addEventListener('change', () => { grouping = groupSel.value; prefs.set('grouping', grouping); collapsed.clear(); render(); });
+seriesToggle.addEventListener('change', () => { breakOutSeries = seriesToggle.checked; prefs.set('series', breakOutSeries ? 'on' : 'off'); render(); });
+genreSel.addEventListener('change', () => { genre = genreSel.value; render(); });
+collapseBtn.addEventListener('click', () => {
+  if (collapsed.size) collapsed.clear();
+  else groupBooks(BOOKS).forEach(g => g.label && collapsed.add(g.label));
+  render();
+});
+let typing;
+q.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(render, 120); });
 
+function load() {
+  showLoading(lib);
+  fetchLibrary()
+    .then(books => {
+      BOOKS = books;
+      buildGenreSelect(); updateStats(); buildShelfTabs();
+      // A genre link from the Timeline page arrives as #genre=Tag.
+      const h = decodeURIComponent((location.hash.match(/genre=([^&]+)/) || [])[1] || '');
+      if (h && GENRES.has(h)) { genre = h; genreSel.value = h; }
+      render();
+    })
+    .catch(err => showError(lib, err, load));
+}
 wireModal();
-showLoading(grid);
-fetchLibrary()
-  .then(books => { BOOKS = books; updateStats(); buildShelfTabs(); render(); })
-  .catch(err => showError(grid, err));
-q.addEventListener('input', render);
+load();
 </script>
 </body>
 </html>

@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DinoBooks — Reading Timeline</title>
+<meta name="description" content="Every book Libby has read, in the order she read them.">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,21 +22,21 @@
   <nav class="sitenav">
     <a href="index.html">Library</a>
     <a href="timeline.html" class="active">Reading Timeline</a>
+    <a href="app/" class="editlink" title="Opens the DinoBooks app in your browser. Signing in is needed to change anything.">✎ Sign in to edit</a>
   </nav>
   <div class="spineshelf" aria-label="Reading statistics">
     <div class="spine s1"><b id="stat-read">…</b><span>books read</span></div>
     <div class="spine s2"><b id="stat-sessions">…</b><span>reads logged</span></div>
-    <div class="spine s3"><b id="stat-year">…</b><span>this year</span></div>
+    <div class="spine s3"><b id="stat-year">…</b><span>past year</span></div>
     <div class="spine s4"><b id="stat-rating">…</b><span>avg rating</span></div>
   </div>
   <div class="shelfrail"></div>
   <div class="shelflip"></div>
 </header>
 
-<main class="tl-wrap" id="main">
-</main>
+<main class="tl-wrap" id="main"></main>
 
-<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal">
     <button class="close" id="close" aria-label="Close">✕</button>
     <div class="modal-body" id="modalBody"></div>
@@ -49,21 +51,29 @@
 const main = document.getElementById('main');
 let BOOKS = [];
 
-function updateStats(dated, undatedBooks) {
-  const readBooks = BOOKS.filter(b => b.isRead);
+/* ISO dates compare correctly as strings, which is why they're stored so. */
+function isoDaysAgoYear() {
+  const t = new Date();
+  const d = new Date(t.getFullYear() - 1, t.getMonth(), t.getDate());
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function updateStats(dated) {
   const sessions = BOOKS.flatMap(b => b.sessions);
   const rated = sessions.filter(s => s.rating != null);
-  const year = new Date().getFullYear();
-  const thisYear = dated.filter(e => e.sortDate.startsWith(String(year))).length;
-  document.getElementById('stat-read').textContent = readBooks.length;
+  // A rolling twelve months, as in the app: "this year" said more about the
+  // date than the reading — nothing in January, everything by December.
+  const since = isoDaysAgoYear();
+  const pastYear = dated.filter(e => e.sortDate >= since).length;
+  document.getElementById('stat-read').textContent = BOOKS.filter(b => b.isRead).length;
   document.getElementById('stat-sessions').textContent = sessions.length;
-  document.getElementById('stat-year').textContent = thisYear;
+  document.getElementById('stat-year').textContent = pastYear;
   document.getElementById('stat-rating').textContent = rated.length
     ? (rated.reduce((a, s) => a + Number(s.rating), 0) / rated.length).toFixed(1) : '—';
 }
 
 function timelineEntries() {
-  // one entry per dated session; undated sessions fall to the read shelf
+  // One entry per dated read; books read with no dates go to the read shelf.
   const dated = [], undatedBooks = [];
   BOOKS.forEach(b => {
     let hasDated = false;
@@ -77,12 +87,13 @@ function timelineEntries() {
   return { dated, undatedBooks };
 }
 
-function entryHTML(e) {
+/* The cover is the book; the card is this read. */
+function entryHTML(e, i) {
   const b = e.book, s = e.session;
   return `
-    <div class="tl-item" data-book="${b.id}" tabindex="0" role="button">
-      ${coverHTML(b, true)}
-      <div class="tl-card">
+    <div class="tl-item">
+      <div class="tl-cover" data-open="book" data-i="${i}" tabindex="0" role="button" aria-label="Open ${esc(b.title)}">${coverHTML(b, { big: true })}</div>
+      <div class="tl-card" data-open="read" data-i="${i}" tabindex="0" role="button" aria-label="Reading history for ${esc(b.title)}">
         <h3>${esc(b.title)}</h3>
         <div class="auth">${esc(b.authorLine)}</div>
         <span class="when">${esc(sessionWhen(s))}</span>
@@ -94,23 +105,22 @@ function entryHTML(e) {
 
 function render() {
   const { dated, undatedBooks } = timelineEntries();
-  updateStats(dated, undatedBooks);
+  updateStats(dated);
   let html = '';
 
   if (dated.length) {
-    html += `<p class="tl-intro">Scroll down through time — each stop on the trail is a finished book.</p>`;
+    html += `<p class="tl-intro">Scroll down through time — each stop on the trail is a finished book. Tap a cover for the book, or a card for its reading history.</p>`;
     let currentYear = null;
-    let open = false;
-    dated.forEach(e => {
+    dated.forEach((e, i) => {
       const y = e.sortDate.slice(0, 4);
       if (y !== currentYear) {
-        if (open) html += `</div>`;
+        if (currentYear !== null) html += `</div>`;
         html += `<div class="tl-year"><b>${y}</b></div><div class="tl">`;
-        currentYear = y; open = true;
+        currentYear = y;
       }
-      html += entryHTML(e);
+      html += entryHTML(e, i);
     });
-    if (open) html += `</div>`;
+    html += `</div>`;
   } else {
     html += `
       <div class="tl-empty">
@@ -137,18 +147,24 @@ function render() {
   }
 
   main.innerHTML = html;
+  main.querySelectorAll('[data-open]').forEach(el => {
+    const e = dated[Number(el.dataset.i)];
+    activate(el, () => el.dataset.open === 'book' ? openModal(e.book) : openHistory(e.book, e.session.id));
+  });
   main.querySelectorAll('[data-book]').forEach(el => {
-    const open = () => { const b = BOOKS.find(x => String(x.id) === el.dataset.book); if (b) openModal(b); };
-    el.addEventListener('click', open);
-    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    const b = BOOKS.find(x => String(x.id) === el.dataset.book);
+    if (b) activate(el, () => openModal(b));
   });
 }
 
+function load() {
+  showLoading(main);
+  fetchLibrary()
+    .then(books => { BOOKS = books; render(); })
+    .catch(err => showError(main, err, load));
+}
 wireModal();
-showLoading(main);
-fetchLibrary()
-  .then(books => { BOOKS = books; render(); })
-  .catch(err => showError(main, err));
+load();
 </script>
 </body>
 </html>
