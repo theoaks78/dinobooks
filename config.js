@@ -4,6 +4,6 @@
    it only grants what Row Level Security allows (read-only).
    ============================================================ */
 const DINO = {
-  SUPABASE_URL: "https://gzaaqdfyugkbwghuveal.supabase.co",
-  API_KEY: "sb_publishable_wpYQ66d1K9xm7T339ZS-Xg_lsLlZ9C4"
+  SUPABASE_URL: "https://dinobooks.tail493a5a.ts.net:8443",
+  API_KEY: "sb_publishable_UxUhOMElGDScoeXndqr966_u3jJflDa"
 };
